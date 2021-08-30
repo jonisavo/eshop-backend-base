@@ -93,7 +93,7 @@ const deleteItem = async (model, id, res, responseSelection = undefined) => {
     return errorResponse(404, 'The item was not found!', res);
 
   item.remove()
-    .then(item => successResponse(500, item, res))
+    .then(item => successResponse(200, item, res))
     .catch(err => errorResponse(500, err, res));
 }
 
