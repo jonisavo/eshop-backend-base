@@ -10,6 +10,7 @@ const { PWT_RSA_KEY } = require('../utils/jwt');
 
 const User = require('../models/user');
 const { requestContainsNonEmptyStringField } = require('../utils/request_utils');
+const { ErrorCode } = require('../utils/error_codes');
 
 const router = express.Router();
 
@@ -21,19 +22,19 @@ router.get('/', requireAdminJwt(), async (_req, res) => {
 
 router.get('/:id', useJwt(), async (req, res) => {
   if (!hasJwt(req) || (req.user.userId !== req.params.id && !isAdmin(req)))
-    return errorResponse(401, "You are not authorized.", res);
+    return errorResponse(401, "You are not authorized.", ErrorCode.USER_NOT_AUTHORIZED, res);
 
   await getItemById(User, req.params.id, res, { selection: getSelection });
 });
 
 const register = async (req, res) => {
   if (typeof req.body.password !== 'string')
-    return errorResponse(400, 'No password given.', res);
+    return errorResponse(400, 'No password given.', ErrorCode.REQUEST_MISSING_PARAMS, res);
 
   const existingUser = await User.findOne({ email: req.body.email });
 
   if (existingUser)
-    return errorResponse(400, 'User already exists with that e-mail.', res);
+    return errorResponse(400, 'User already exists with that e-mail.', ErrorCode.USER_ALREADY_EXISTS, res);
 
   const passwordHash = bcryptjs.hashSync(req.body.password, 10);
 
@@ -60,21 +61,21 @@ router.delete('/:id', requireAdminJwt(), async (req, res) => {
 
 router.post('/login', useJwt(), async (req, res) => {
   if (hasJwt(req))
-    return errorResponse(400, 'Already logged in.', res);
+    return errorResponse(400, 'Already logged in.', ErrorCode.USER_ALREADY_LOGGED_IN, res);
 
   if (!requestContainsNonEmptyStringField(req, 'email'))
-    return errorResponse(400, 'E-mail not given.', res);
+    return errorResponse(400, 'E-mail not given.', ErrorCode.REQUEST_MISSING_PARAMS, res);
 
   if (!requestContainsNonEmptyStringField(req, 'password'))
-    return errorResponse(400, 'Password not given.', res);
+    return errorResponse(400, 'Password not given.', ErrorCode.REQUEST_MISSING_PARAMS, res);
 
   const user = await User.findOne({ email: req.body.email });
 
   if (!user)
-    return errorResponse(404, 'User not found.', res);
+    return errorResponse(404, 'User not found.', ErrorCode.DB_ITEM_NOT_FOUND, res);
 
   if (!bcryptjs.compareSync(req.body.password, user.passwordHash))
-    return errorResponse(400, 'Wrong password.', res);
+    return errorResponse(400, 'Wrong password.', ErrorCode.USER_WRONG_PASSWORD, res);
 
   const jwtData = { userId: user.id, isAdmin: user.isAdmin };
 
@@ -85,24 +86,24 @@ router.post('/login', useJwt(), async (req, res) => {
 
 router.post('/change/password', async (req, res) => {
   if (!requestContainsNonEmptyStringField(req, 'email'))
-    return errorResponse(400, 'No e-mail given.', res);
+    return errorResponse(400, 'No e-mail given.', ErrorCode.REQUEST_MISSING_PARAMS, res);
 
   if (!requestContainsNonEmptyStringField(req, 'newPassword'))
-    return errorResponse(400, 'No new password given.', res);
+    return errorResponse(400, 'No new password given.', ErrorCode.REQUEST_MISSING_PARAMS, res);
 
   if (!requestContainsNonEmptyStringField(req, 'currentPassword'))
-    return errorResponse(400, 'No current password given.', res);
+    return errorResponse(400, 'No current password given.', ErrorCode.REQUEST_MISSING_PARAMS, res);
 
   const user = await User.findOne({ email: req.body.email });
 
   if (!user)
-    return errorResponse(404, 'User not found.', res);
+    return errorResponse(404, 'User not found.', ErrorCode.DB_ITEM_NOT_FOUND, res);
   
   if (!bcryptjs.compareSync(req.body.currentPassword, user.passwordHash))
-    return errorResponse(400, 'Wrong current password.', res);
+    return errorResponse(400, 'Wrong current password.', ErrorCode.USER_WRONG_PASSWORD, res);
 
   if (bcryptjs.compareSync(req.body.newPassword, user.passwordHash))
-    return errorResponse(400, 'New password can not be the same as the current password.', res);
+    return errorResponse(400, 'New password can not be the same as the current password.', ErrorCode.REQUEST_INVALID_PARAMS, res);
 
   const passwordHash = bcryptjs.hashSync(req.body.newPassword, 10);
 

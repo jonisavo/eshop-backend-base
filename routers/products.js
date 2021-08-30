@@ -8,6 +8,7 @@ const Product = require('../models/product');
 
 const Category = require('../models/category');
 const { requireAdminJwt } = require('../utils/jwt');
+const { ErrorCode } = require('../utils/error_codes');
 
 const router = express.Router();
 
@@ -42,12 +43,12 @@ router.get('/brief/:id', async (req, res) => {
 
 router.post('/', [upload.single('image'), requireAdminJwt()], async (req, res) => {
   if (!await findItemById(Category, req.body.category))
-    return errorResponse(400, 'Invalid category', res);
+    return errorResponse(400, 'Invalid category', ErrorCode.REQUEST_INVALID_PARAMS, res);
 
   const file = req.file;
 
   if (!file)
-    return errorResponse(400, 'No image found', res);
+    return errorResponse(400, 'No image found', ErrorCode.REQUEST_MISSING_PARAMS, res);
 
   const product = instantiateModelFromRequestBody(Product, {
     ...req.body,
@@ -59,12 +60,12 @@ router.post('/', [upload.single('image'), requireAdminJwt()], async (req, res) =
 
 router.put('/:id', [upload.single('image'), requireAdminJwt()], async (req, res) => {
   if (typeof req.body.category === 'string' && !await findItemById(Category, req.body.category))
-    return errorResponse(400, 'Invalid category', res);
+    return errorResponse(400, 'Invalid category', ErrorCode.REQUEST_INVALID_PARAMS, res);
 
   const product = await findItemById(Product, req.params.id);
 
   if (!product)
-    return errorResponse(404, 'Product not found', res);
+    return errorResponse(404, 'Product not found', ErrorCode.DB_ITEM_NOT_FOUND, res);
 
   const file = req.file;
 
@@ -80,12 +81,12 @@ router.put('/:id/gallery', [upload.array('images', 20), requireAdminJwt()], asyn
   const product = await findItemById(Product, req.params.id);
 
   if (!product)
-    return errorResponse(404, 'Product not found', res);
+    return errorResponse(404, 'Product not found', ErrorCode.DB_ITEM_NOT_FOUND, res);
 
   let images = req.files;
 
   if (!images || images.length === 0)
-    return errorResponse(400, 'No images given', res);
+    return errorResponse(400, 'No images given', ErrorCode.REQUEST_MISSING_PARAMS, res);
 
   images = images.map(image => getFullStorageFilePath(req, image.filename));
 
@@ -107,7 +108,7 @@ router.get('/get/featured(/:count)?', async (req, res) => {
     limit = parseInt(req.params.count, 10);
 
     if (isNaN(limit)) {
-      return errorResponse(400, 'Invalid count', res);
+      return errorResponse(400, 'Invalid count', ErrorCode.REQUEST_INVALID_PARAMS, res);
     }
   }
 

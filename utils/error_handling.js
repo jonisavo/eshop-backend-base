@@ -1,10 +1,13 @@
+const { ErrorCode } = require('./error_codes');
 const { errorResponse } = require('./responses');
 
-const errorsToHandle = ['UnauthorizedError', 'ValidationError'];
-
 const handleErrors = (err, _req, res, next) => {
-  if (typeof err?.name === 'string' && errorsToHandle.includes(err.name)) {
-    return errorResponse(err.status || 500, err, res);
+  if (err?.name === 'UnauthorizedError') {
+    return errorResponse(err.status || 500, err, ErrorCode.USER_NOT_AUTHORIZED, res);
+  }
+
+  if (err?.name === 'ValidationError') {
+    return errorResponse(err.status || 500, err, ErrorCode.REQUEST_VALIDATION_ERROR, res);
   }
 
   next();

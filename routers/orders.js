@@ -7,6 +7,7 @@ const { Order, OrderStatus } = require('../models/order');
 const OrderItem = require('../models/order_item');
 const { instantiateModelFromRequestBody } = require('../utils/mongoose_utils');
 const { requireAdminJwt, useJwt, hasJwt, isAdmin } = require('../utils/jwt');
+const { ErrorCode } = require('../utils/error_codes');
 
 const router = express.Router();
 
@@ -24,7 +25,7 @@ router.get('/', requireAdminJwt(), async (_req, res) => {
 
 router.get('/:id', useJwt(), async (req, res) => {
   if (!hasJwt(req))
-    return errorResponse(401, 'You are not logged in.', res);
+    return errorResponse(401, 'You are not logged in.', ErrorCode.USER_NOT_LOGGED_IN, res);
 
   const filter = isAdmin(req) ? {} : { user: req.user.userId };
 
@@ -36,13 +37,13 @@ router.get('/:id', useJwt(), async (req, res) => {
 
 router.post('/', useJwt(), async (req, res) => {
   if (!hasJwt(req))
-    return errorResponse(401, 'You are not logged in.', res);
+    return errorResponse(401, 'You are not logged in.', ErrorCode.USER_NOT_LOGGED_IN, res);
 
   if (!Array.isArray(req.body.orderItems) || req.body.orderItems.length === 0)
-    return errorResponse(400, 'No order items given', res);
+    return errorResponse(400, 'No order items given', ErrorCode.REQUEST_MISSING_PARAMS, res);
 
   if (typeof req.body.user !== 'string')
-    return errorResponse(400, 'No user given', res);
+    return errorResponse(400, 'No user given', ErrorCode.REQUEST_MISSING_PARAMS, res);
 
   const orderItemIds = await Promise.all(req.body.orderItems.map(async orderItem => {
     let newOrderItem = instantiateModelFromRequestBody(OrderItem, orderItem);
@@ -70,7 +71,7 @@ router.post('/', useJwt(), async (req, res) => {
 
 router.post('/:id/set/status/:status', requireAdminJwt(), async (req, res) => {
   if (!Object.values(OrderStatus).includes(req.params.status))
-    return errorResponse(400, 'Invalid order status', res);
+    return errorResponse(400, 'Invalid order status', ErrorCode.REQUEST_INVALID_PARAMS, res);
 
   await updateItem(Order, req.params.id, { status: req.params.status }, res);
 });
@@ -83,16 +84,16 @@ router.delete('/:id', requireAdminJwt(), async (req, res) => {
   const order = await Order.findById(req.params.id);
 
   if (!order)
-    return errorResponse(404, 'The order was not found!', res);
+    return errorResponse(404, 'The order was not found!', ErrorCode.DB_ITEM_NOT_FOUND, res);
 
   const orderItemDeletions = Promise.all(
     order.orderItems.map(async id => OrderItem.findByIdAndRemove(id))
-  ).catch(err => errorResponse(500, err, res));
+  ).catch(err => errorResponse(500, err, ErrorCode.DB_REMOVE_ERROR, res));
 
   try {
     await orderItemDeletions;
   } catch (err) {
-    return errorResponse(500, err, res);
+    return errorResponse(500, err, ErrorCode.DB_REMOVE_ERROR, res);
   }
 
   await deleteItem(Order, req.params.id, res);
@@ -100,13 +101,13 @@ router.delete('/:id', requireAdminJwt(), async (req, res) => {
 
 router.get('/get/user/:id', useJwt(), async (req, res) => {
   if (!mongoose.isValidObjectId(req.params.id))
-    return errorResponse(400, 'Invalid user ID', res);
+    return errorResponse(400, 'Invalid user ID', ErrorCode.DB_INVALID_ID_ERROR, res);
 
   if (!hasJwt(req))
-    return errorResponse(400, 'You are not logged in.', res);
+    return errorResponse(400, 'You are not logged in.', ErrorCode.USER_NOT_LOGGED_IN, res);
 
   if (req.params.id !== req.user.userId && !isAdmin(req))
-    return errorResponse(401, 'You are not authorized.', res);
+    return errorResponse(401, 'You are not authorized.', ErrorCode.USER_NOT_AUTHORIZED, res);
 
   await getAllItems(Order, res, {
     filter: { user: req.params.id },
@@ -126,7 +127,7 @@ router.get('/get/totalsales', requireAdminJwt(), async (_req, res) => {
   ]);
 
   if (!totalSales)
-    return errorResponse(500, 'Order sales can not be generated', res);
+    return errorResponse(500, 'Order sales can not be generated', ErrorCode.DB_AGGREGATE_ERROR, res);
 
   successResponse(200, { totalSales: totalSales.pop().totalSalesSum }, res);
 });
