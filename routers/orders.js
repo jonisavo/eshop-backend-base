@@ -45,7 +45,7 @@ router.post('/', useJwt(), async (req, res) => {
   if (typeof req.body.user !== 'string')
     return errorResponse(400, 'No user given', ErrorCode.REQUEST_MISSING_PARAMS, res);
 
-  const orderItemIds = await Promise.all(req.body.orderItems.map(async orderItem => {
+  let orderItemIds = Promise.all(req.body.orderItems.map(async orderItem => {
     let newOrderItem = instantiateModelFromRequestBody(OrderItem, orderItem);
 
     newOrderItem = await newOrderItem.save();
@@ -53,10 +53,22 @@ router.post('/', useJwt(), async (req, res) => {
     return newOrderItem._id;
   }));
 
-  const prices = await Promise.all(orderItemIds.map(async id => {
+  try {
+    orderItemIds = await orderItemIds;
+  } catch (err) {
+    return errorResponse(500, err, ErrorCode.DB_SAVE_ERROR, res);
+  }
+
+  let prices = Promise.all(orderItemIds.map(async id => {
     const orderItem = await OrderItem.findById(id).populate('product', 'price');
     return orderItem.product.price * orderItem.quantity;
   }));
+
+  try {
+    prices = await prices;
+  } catch (err) {
+    return errorResponse(500, err, ErrorCode.DB_FIND_ERROR, res);
+  }
 
   const totalPrice = prices.reduce((prev, current) => prev + current, 0);
 
