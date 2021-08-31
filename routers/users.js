@@ -1,7 +1,7 @@
 const express = require('express');
 const bcryptjs = require('bcryptjs');
 const jwt = require('jsonwebtoken');
-const { requireAdminJwt, useJwt, hasJwt, isAdmin } = require('../utils/jwt');
+const { requireAdminJwt, useJwt, hasJwt, isAdmin, useJwtNoExpiry } = require('../utils/jwt');
 const { saveItem, getAllItems, getItemById, updateItem, getItemCount, deleteItem } = require('../utils/db_utils');
 const { instantiateModelFromRequestBody } = require('../utils/mongoose_utils');
 const { successResponse, errorResponse } = require('../utils/responses');
@@ -59,7 +59,7 @@ router.delete('/:id', requireAdminJwt(), async (req, res) => {
   await deleteItem(User, req.params.id, res, getSelection);
 });
 
-router.post('/login', useJwt(), async (req, res) => {
+router.post('/login', useJwtNoExpiry(), async (req, res) => {
   if (hasJwt(req))
     return errorResponse(400, 'Already logged in.', ErrorCode.USER_ALREADY_LOGGED_IN, res);
 

@@ -11,17 +11,41 @@ const isRevokedForCustomers = async (_req, payload, done) => {
   }
 };
 
-const requireAdminJwt = () => expressJwt({
+const commonJwtOptions = {
   secret: PWT_RSA_KEY,
   algorithms: ['HS256'],
+}
+
+const requireAdminJwt = () => expressJwt({
+  ...commonJwtOptions,
   isRevoked: isRevokedForCustomers
 });
 
 const useJwt = () => expressJwt({
-  secret: PWT_RSA_KEY,
-  algorithms: ['HS256'],
+  ...commonJwtOptions,
   credentialsRequired: false
 });
+
+const useJwtNoExpiry = () => (req, res, next) => {
+  const handleErrorNext = err => {
+    if (err) {
+      if (
+        err.name === 'UnauthorizedError' &&
+        err.inner.name === 'TokenExpiredError'
+      ) {
+        return next();
+      }
+    }
+    next(err);
+  };
+
+  const middleware = expressJwt({
+    ...commonJwtOptions,
+    credentialsRequired: false
+  });
+
+  return middleware(req, res, handleErrorNext);
+}
 
 const hasJwt = (req) => typeof req.user?.userId === 'string';
 
@@ -30,6 +54,7 @@ const isAdmin = (req) => req.user?.isAdmin === true;
 module.exports = {
   requireAdminJwt,
   useJwt,
+  useJwtNoExpiry,
   hasJwt,
   isAdmin,
   PWT_RSA_KEY
