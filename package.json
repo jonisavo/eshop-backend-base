@@ -1,6 +1,6 @@
 {
   "name": "eshop-backend",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "description": "Simple e-shop backend base using Express and MongoDB (Mongoose)",
   "main": "app.js",
   "scripts": {
