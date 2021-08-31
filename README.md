@@ -329,11 +329,14 @@ or
 {
     "success": false,
     "error": {
-        "toString": "message"
+        "_toString": "message",
+        "_code": 900
         // can also contain other data included in the error
     }
 }
 ```
+
+For all possible error codes for the `_code` field, see [error_codes.js](./utils/error_codes.js).
 
 The API is secured with JSON web tokens, which contain the user ID and admin flag. The admin flag is used to determine whether the user should have access to certain functions.
 
@@ -472,6 +475,7 @@ and replies with a JWT token if authentication was successful:
   "success": true,
   "result": {
     "user": "example@example.org",
+    "id": "...",
     "token": "..."
   }
 }
