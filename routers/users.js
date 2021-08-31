@@ -81,7 +81,7 @@ router.post('/login', useJwt(), async (req, res) => {
 
   const token = jwt.sign(jwtData, PWT_RSA_KEY, { expiresIn: '1d' });
 
-  successResponse(200, { user: user.email, token }, res);
+  successResponse(200, { user: user.email, id: user._id, token }, res);
 });
 
 router.post('/change/password', async (req, res) => {
